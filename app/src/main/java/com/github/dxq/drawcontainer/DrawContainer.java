@@ -12,7 +12,6 @@ import android.graphics.Bitmap.Config;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.os.Build.VERSION;
@@ -44,7 +43,7 @@ public class DrawContainer extends RelativeLayout {
     private float k;
     private float l = 1.0F;
     private int m = 0;
-    private Stack<a> n;
+    private Stack<PathHistory> mStack;
     private boolean o = true;
     private boolean editable = false;
     private b q;
@@ -80,12 +79,12 @@ public class DrawContainer extends RelativeLayout {
         var1.set((var3 + var4) / 2.0F, (var6 + var5) / 2.0F);
     }
 
-    private a getLayerInfo() {
-        if(this.n.isEmpty()) {
-            this.n.push(new a(this.c, this.l));
+    private PathHistory getLayerInfo() {
+        if(this.mStack.isEmpty()) {
+            this.mStack.push(new PathHistory(this.c, this.l));
         }
 
-        return (a)this.n.peek();
+        return (PathHistory)this.mStack.peek();
     }
 
     @SuppressLint({"NewApi"})
@@ -99,8 +98,8 @@ public class DrawContainer extends RelativeLayout {
         LayoutParams var1 = new LayoutParams(-1, -1);
         this.addView(this.mViewB, var1);
         this.addView(this.mViewA, var1);
-        this.n = new Stack();
-        this.mViewA.setLayerInfos(DrawContainer.this.n);
+        this.mStack = new Stack();
+        this.mViewA.setLayerInfos(DrawContainer.this.mStack);
         this.mViewA.setEditable(this.editable);
     }
 
@@ -160,27 +159,27 @@ public class DrawContainer extends RelativeLayout {
             this.mViewB.a(var4, var5);
             this.mViewA.setLayoutParams(var7);
             this.mViewB.setLayoutParams(var7);
-            a var8 = this.getLayerInfo();
+            PathHistory var8 = this.getLayerInfo();
             var8.c = var7.leftMargin;
             var8.d = var7.topMargin;
-            var8.a(this.c);
+            var8.setMetrix(this.c);
             this.mViewA.postInvalidate();
         }
 
     }
 
     private void n() {
-        a var1;
-        if(this.n != null && !this.n.isEmpty()) {
-            var1 = (a)this.n.peek();
-            if(var1.b == null || var1.b.isEmpty()) {
-                this.n.pop();
+        PathHistory var1;
+        if(this.mStack != null && !this.mStack.isEmpty()) {
+            var1 = (PathHistory)this.mStack.peek();
+            if(var1.mDrawPathStack == null || var1.mDrawPathStack.isEmpty()) {
+                this.mStack.pop();
             }
         }
 
-        var1 = new a(this.l);
-        var1.a(this.c);
-        this.n.push(var1);
+        var1 = new PathHistory(this.l);
+        var1.setMetrix(this.c);
+        this.mStack.push(var1);
     }
 
     private void o() {
@@ -241,13 +240,13 @@ public class DrawContainer extends RelativeLayout {
     }
 
     public void d() {
-        if(this.n != null && !this.n.isEmpty()) {
+        if(this.mStack != null && !this.mStack.isEmpty()) {
             label31:
-            for(int var1 = this.n.size() - 1; var1 >= 0; --var1) {
-                a var3 = (a)this.n.get(var1);
+            for(int var1 = this.mStack.size() - 1; var1 >= 0; --var1) {
+                PathHistory var3 = (PathHistory)this.mStack.get(var1);
 
-                for(int var2 = var3.b.size() - 1; var2 >= 0; --var2) {
-                    DrawContainer.c var4 = (DrawContainer.c)var3.b.get(var2);
+                for(int var2 = var3.mDrawPathStack.size() - 1; var2 >= 0; --var2) {
+                    DrawPath var4 = (DrawPath)var3.mDrawPathStack.get(var2);
                     if(var4.a) {
                         var4.a = false;
                         break label31;
@@ -265,13 +264,13 @@ public class DrawContainer extends RelativeLayout {
     }
 
     public void e() {
-        if(this.n != null && !this.n.isEmpty()) {
+        if(this.mStack != null && !this.mStack.isEmpty()) {
             label31:
-            for(int var1 = 0; var1 < this.n.size(); ++var1) {
-                a var3 = (a)this.n.get(var1);
+            for(int var1 = 0; var1 < this.mStack.size(); ++var1) {
+                PathHistory var3 = (PathHistory)this.mStack.get(var1);
 
-                for(int var2 = 0; var2 < var3.b.size(); ++var2) {
-                    DrawContainer.c var4 = (DrawContainer.c)var3.b.get(var2);
+                for(int var2 = 0; var2 < var3.mDrawPathStack.size(); ++var2) {
+                    DrawPath var4 = (DrawPath)var3.mDrawPathStack.get(var2);
                     if(!var4.a) {
                         var4.a = true;
                         break label31;
@@ -289,12 +288,12 @@ public class DrawContainer extends RelativeLayout {
     }
 
     public void f() {
-        if(this.n != null && !this.n.isEmpty()) {
-            for(int var1 = this.n.size() - 1; var1 >= 0; --var1) {
-                a var4 = (a)this.n.get(var1);
+        if(this.mStack != null && !this.mStack.isEmpty()) {
+            for(int var1 = this.mStack.size() - 1; var1 >= 0; --var1) {
+                PathHistory var4 = (PathHistory)this.mStack.get(var1);
 
-                for(int var2 = var4.b.size() - 1; var2 >= 0; --var2) {
-                    DrawContainer.c var3 = (DrawContainer.c)var4.b.get(var2);
+                for(int var2 = var4.mDrawPathStack.size() - 1; var2 >= 0; --var2) {
+                    DrawPath var3 = (DrawPath)var4.mDrawPathStack.get(var2);
                     if(var3.a) {
                         var3.a = false;
                     }
@@ -330,28 +329,28 @@ public class DrawContainer extends RelativeLayout {
     }
 
     public Bitmap getDrawingBitmap() {
-        Bitmap var1 = null;
+        Bitmap underlayerBitmap = null;
 
-        Bitmap var2;
+        Bitmap bitmap;
         try {
             if(this.mUnderlayerBitmap == null) {
-                return var1;
+                return underlayerBitmap;
             }
 
-            var2 = Bitmap.createBitmap(this.mUnderlayerBitmap.getWidth(), this.mUnderlayerBitmap.getHeight(), Config.ARGB_8888);
-            Canvas var4 = new Canvas(var2);
+            bitmap = Bitmap.createBitmap(this.mUnderlayerBitmap.getWidth(), this.mUnderlayerBitmap.getHeight(), Config.ARGB_8888);
+            Canvas var4 = new Canvas(bitmap);
             Rect var3 = new Rect(0, 0, this.mUnderlayerBitmap.getWidth(), this.mUnderlayerBitmap.getHeight());
             if(this.i != null) {
                 var4.drawBitmap(this.i, (Rect)null, var3, (Paint)null);
             }
 
-            this.mViewA.a(var4, this.n, 1.0F);
+            this.mViewA.draw(var4, this.mStack, 1.0F);
         } catch (Throwable var5) {
-            return var1;
+            return underlayerBitmap;
         }
 
-        var1 = var2;
-        return var1;
+        underlayerBitmap = bitmap;
+        return underlayerBitmap;
     }
 
     public Bitmap getMarkBitmap() {
@@ -360,12 +359,12 @@ public class DrawContainer extends RelativeLayout {
 
     public boolean h() {
         boolean var3;
-        if(this.n != null && !this.n.isEmpty()) {
-            for(int var1 = this.n.size() - 1; var1 >= 0; --var1) {
-                a var4 = (a)this.n.get(var1);
+        if(this.mStack != null && !this.mStack.isEmpty()) {
+            for(int var1 = this.mStack.size() - 1; var1 >= 0; --var1) {
+                PathHistory var4 = (PathHistory)this.mStack.get(var1);
 
-                for(int var2 = var4.b.size() - 1; var2 >= 0; --var2) {
-                    if(!((DrawContainer.c)var4.b.get(var2)).a) {
+                for(int var2 = var4.mDrawPathStack.size() - 1; var2 >= 0; --var2) {
+                    if(!((DrawPath)var4.mDrawPathStack.get(var2)).a) {
                         var3 = true;
                         return var3;
                     }
@@ -379,12 +378,12 @@ public class DrawContainer extends RelativeLayout {
 
     public boolean i() {
         boolean var3;
-        if(this.n != null && !this.n.isEmpty()) {
-            for(int var1 = this.n.size() - 1; var1 >= 0; --var1) {
-                a var4 = (a)this.n.get(var1);
+        if(this.mStack != null && !this.mStack.isEmpty()) {
+            for(int var1 = this.mStack.size() - 1; var1 >= 0; --var1) {
+                PathHistory var4 = (PathHistory)this.mStack.get(var1);
 
-                for(int var2 = var4.b.size() - 1; var2 >= 0; --var2) {
-                    if(((DrawContainer.c)var4.b.get(var2)).a) {
+                for(int var2 = var4.mDrawPathStack.size() - 1; var2 >= 0; --var2) {
+                    if(((DrawPath)var4.mDrawPathStack.get(var2)).a) {
                         var3 = false;
                         return var3;
                     }
@@ -397,9 +396,9 @@ public class DrawContainer extends RelativeLayout {
     }
 
     public void j() {
-        if(this.n != null && !this.n.isEmpty()) {
-            a var1 = (a)this.n.peek();
-            if(var1.b != null && !var1.b.isEmpty() && this.q != null && !this.n.isEmpty()) {
+        if(this.mStack != null && !this.mStack.isEmpty()) {
+            PathHistory var1 = (PathHistory)this.mStack.peek();
+            if(var1.mDrawPathStack != null && !var1.mDrawPathStack.isEmpty() && this.q != null && !this.mStack.isEmpty()) {
                 this.q.a();
             }
         }
@@ -584,11 +583,11 @@ public class DrawContainer extends RelativeLayout {
         this.mViewA.setEditable(var1);
     }
 
-    public void setLayerStack(Stack<a> var1) {
-        this.n = var1;
+    public void setLayerStack(Stack<PathHistory> var1) {
+        this.mStack = var1;
         this.o();
         this.m();
-        this.mViewA.setLayerInfos(this.n);
+        this.mViewA.setLayerInfos(this.mStack);
         if(this.q != null) {
             this.q.a();
         }
@@ -632,24 +631,24 @@ public class DrawContainer extends RelativeLayout {
         this.o = var1;
     }
 
-    public static class a {
-        public Matrix a = new Matrix();
-        public Stack<DrawContainer.c> b = new Stack();
+    public static class PathHistory {
+        public Matrix mMatrix = new Matrix();
+        public Stack<DrawPath> mDrawPathStack = new Stack();
         public int c;
         public int d;
-        public float e = 1.0F;
+        public float mDegree = 1.0F;
 
-        public a(float var1) {
-            this.e = var1;
+        public PathHistory(float var1) {
+            this.mDegree = var1;
         }
 
-        public a(Matrix var1, float var2) {
-            this.a(var1);
-            this.e = var2;
+        public PathHistory(Matrix matrix, float degree) {
+            this.setMetrix(matrix);
+            this.mDegree = degree;
         }
 
-        public void a(Matrix var1) {
-            this.a.set(var1);
+        public void setMetrix(Matrix matrix) {
+            this.mMatrix.set(matrix);
         }
     }
 
@@ -657,15 +656,15 @@ public class DrawContainer extends RelativeLayout {
         void a();
     }
 
-    public static class c {
+    public static class DrawPath {
         public boolean a = true;
-        public Path b = new Path();
+        public android.graphics.Path mPath = new android.graphics.Path();
 
-        public c() {
+        public DrawPath() {
         }
 
-        public c(Path var1) {
-            this.b = var1;
+        public DrawPath(android.graphics.Path path) {
+            this.mPath = path;
         }
     }
 }
