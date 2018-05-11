@@ -21,6 +21,12 @@ import android.view.MotionEvent;
 import android.widget.RelativeLayout;
 
 import java.util.Stack;
+
+import static android.view.MotionEvent.ACTION_DOWN;
+import static android.view.MotionEvent.ACTION_MOVE;
+import static android.view.MotionEvent.ACTION_POINTER_1_UP;
+import static android.view.MotionEvent.ACTION_UP;
+
 /**
  * 郑重声明：本源码均来自互联网，仅供个人欣赏、学习之用，
  * 版权归36氪产品发行公司所有，任何组织和个人不得公开传播或用于任何商业盈利用途，
@@ -32,7 +38,7 @@ import java.util.Stack;
 public class DrawContainer extends RelativeLayout {
     private viewA mViewA;
     private ViewB mViewB;
-    private Matrix c = new Matrix();
+    private Matrix mMatrix = new Matrix();
     private Matrix d = new Matrix();
     private PointF e = new PointF();
     private PointF f = new PointF();
@@ -81,7 +87,7 @@ public class DrawContainer extends RelativeLayout {
 
     private PathHistory getLayerInfo() {
         if(this.mStack.isEmpty()) {
-            this.mStack.push(new PathHistory(this.c, this.l));
+            this.mStack.push(new PathHistory(this.mMatrix, this.l));
         }
 
         return (PathHistory)this.mStack.peek();
@@ -109,9 +115,9 @@ public class DrawContainer extends RelativeLayout {
 
             float var1;
             float var2;
-            if(this.c != null) {
+            if (this.mMatrix != null) {
                 float[] var4 = new float[9];
-                this.c.getValues(var4);
+                this.mMatrix.getValues(var4);
                 var2 = var4[0];
                 var1 = var4[2];
                 var3 = var4[5];
@@ -122,7 +128,7 @@ public class DrawContainer extends RelativeLayout {
 
             Log.v("test", "scale: " + var2 + ", tranx: " + var1 + ", trany: " + var3);
             if(var2 < 1.0F) {
-                this.c.reset();
+                this.mMatrix.reset();
                 this.d.reset();
             }
 
@@ -133,36 +139,36 @@ public class DrawContainer extends RelativeLayout {
 
     private void m() {
         if(this.mUnderlayerBitmap != null) {
-            float var1;
-            float var2;
-            float var3;
-            if(this.c != null) {
+            float scale;
+            float tranX;
+            float transY;
+            if (this.mMatrix != null) {
                 float[] var6 = new float[9];
-                this.c.getValues(var6);
-                var1 = var6[0];
-                var2 = var6[2];
-                var3 = var6[5];
+                this.mMatrix.getValues(var6);
+                scale = var6[0];
+                tranX = var6[2];
+                transY = var6[5];
             } else {
-                var2 = 0.0F;
-                var1 = 1.0F;
-                var3 = 0.0F;
+                tranX = 0.0F;
+                scale = 1.0F;
+                transY = 0.0F;
             }
 
-            Log.v("test", "scale: " + var1 + ", tranx: " + var2 + ", trany: " + var3);
-            int var4 = (int)((float)this.mUnderlayerBitmap.getWidth() * this.l * var1);
-            int var5 = (int)(var1 * (float)this.mUnderlayerBitmap.getHeight() * this.l);
+            Log.v("test", "scale: " + scale + ", tranx: " + tranX + ", trany: " + transY);
+            int var4 = (int) ((float) this.mUnderlayerBitmap.getWidth() * this.l * scale);
+            int var5 = (int) (scale * (float) this.mUnderlayerBitmap.getHeight() * this.l);
             LayoutParams var7 = (LayoutParams)this.mViewA.getLayoutParams();
-            var7.leftMargin = (int)(var2 + this.j);
-            var7.topMargin = (int)(var3 + this.k);
+            var7.leftMargin = (int) (tranX + this.j);
+            var7.topMargin = (int) (transY + this.k);
             var7.width = var4;
             var7.height = var5;
             this.mViewB.a(var4, var5);
             this.mViewA.setLayoutParams(var7);
             this.mViewB.setLayoutParams(var7);
             PathHistory var8 = this.getLayerInfo();
-            var8.c = var7.leftMargin;
-            var8.d = var7.topMargin;
-            var8.setMetrix(this.c);
+            var8.leftMargin = var7.leftMargin;
+            var8.topMargin = var7.topMargin;
+            var8.setMetrix(this.mMatrix);
             this.mViewA.postInvalidate();
         }
 
@@ -178,7 +184,7 @@ public class DrawContainer extends RelativeLayout {
         }
 
         var1 = new PathHistory(this.l);
-        var1.setMetrix(this.c);
+        var1.setMetrix(this.mMatrix);
         this.mStack.push(var1);
     }
 
@@ -344,7 +350,7 @@ public class DrawContainer extends RelativeLayout {
                 var4.drawBitmap(this.i, (Rect)null, var3, (Paint)null);
             }
 
-            this.mViewA.draw(var4, this.mStack, 1.0F);
+            this.mViewA.drawPaths(var4, this.mStack, 1.0F);
         } catch (Throwable var5) {
             return underlayerBitmap;
         }
@@ -405,42 +411,48 @@ public class DrawContainer extends RelativeLayout {
 
     }
 
+    /**
+     * 判断是否拦截触摸事件
+     * @param motionEvent
+     * @return
+     */
     @Override
-    public boolean onInterceptTouchEvent(MotionEvent var1) {
-        boolean var3 = true;
-        int var2 = var1.getActionMasked();
+    public boolean onInterceptTouchEvent(MotionEvent motionEvent) {
+        boolean isConsume = true;
+        int var2 = motionEvent.getActionMasked();
         if(!this.o) {
-            var3 = super.onInterceptTouchEvent(var1);
+            isConsume = super.onInterceptTouchEvent(motionEvent);
         } else {
             switch(var2) {
-            case 0:
+                case ACTION_DOWN:
                 this.m = 2;
                 break;
-            case 1:
+                case MotionEvent.ACTION_UP:
                 this.m = 0;
-            case 2:
-            case 3:
-            case 4:
+                case MotionEvent.ACTION_MOVE:
+                case MotionEvent.ACTION_CANCEL:
+                case MotionEvent.ACTION_OUTSIDE:
             default:
                 break;
-            case 5:
-                this.g = this.canDraw(var1);
+                //单指下按
+                case MotionEvent.ACTION_POINTER_1_DOWN:
+                    this.g = this.canDraw(motionEvent);
                 if(this.g > 10.0F) {
-                    this.d.set(this.c);
-                    this.canDraw(this.f, var1);
+                    this.d.set(this.mMatrix);
+                    this.canDraw(this.f, motionEvent);
                     this.m = 1;
                 }
                 break;
-            case 6:
+            case ACTION_POINTER_1_UP:
                 this.m = 2;
             }
 
             if(this.m == 0) {
-                var3 = false;
+                isConsume = false;
             }
         }
 
-        return var3;
+        return isConsume;
     }
 
     @Override
@@ -453,38 +465,38 @@ public class DrawContainer extends RelativeLayout {
     }
 
     @Override
-    public boolean onTouchEvent(MotionEvent var1) {
-        boolean var7 = false;
+    public boolean onTouchEvent(MotionEvent motionEvent) {
+        boolean isConsume = false;
         if(this.o && this.mUnderlayerBitmap != null) {
-            switch(var1.getActionMasked()) {
-            case 0:
+            switch(motionEvent.getActionMasked()) {
+            case ACTION_DOWN:
                 this.m = 2;
-                this.d.set(this.c);
-                this.e.set(var1.getX(), var1.getY());
+                this.d.set(this.mMatrix);
+                this.e.set(motionEvent.getX(), motionEvent.getY());
                 this.n();
                 this.m();
                 if(this.mViewA != null) {
-                    this.mViewA.a(var1);
+                    this.mViewA.handleOnTouchEvent(motionEvent);
                 }
                 break;
-            case 1:
+            case ACTION_UP:
                 this.m = 0;
                 this.l();
-                this.mViewA.a(var1);
+                this.mViewA.handleOnTouchEvent(motionEvent);
                 this.j();
                 this.n();
                 break;
-            case 2:
-                float var2 = var1.getX() - this.e.x;
-                float var3 = var1.getY();
+            case ACTION_MOVE:
+                float var2 = motionEvent.getX() - this.e.x;
+                float var3 = motionEvent.getY();
                 float var4 = this.e.y;
                 if(this.m == 0) {
-                    return var7;
+                    return isConsume;
                 }
 
                 if(this.m != 1 && this.editable) {
                     if(this.m == 2) {
-                        this.mViewA.a(var1);
+                        this.mViewA.handleOnTouchEvent(motionEvent);
                     }
                 } else {
                     if(var2 > 0.0F) {
@@ -499,17 +511,17 @@ public class DrawContainer extends RelativeLayout {
                         this.getParent().requestDisallowInterceptTouchEvent(false);
                     }
 
-                    this.c.set(this.d);
-                    this.c.postTranslate(var2, var3 - var4);
-                    var2 = this.canDraw(var1);
+                    this.mMatrix.set(this.d);
+                    this.mMatrix.postTranslate(var2, var3 - var4);
+                    var2 = this.canDraw(motionEvent);
                     if(var2 > 10.0F) {
                         var2 /= this.g;
-                        this.c.postScale(var2, var2, this.f.x, this.f.y);
+                        this.mMatrix.postScale(var2, var2, this.f.x, this.f.y);
                     }
 
-                    if(this.c != null) {
+                    if (this.mMatrix != null) {
                         float[] var8 = new float[9];
-                        this.c.getValues(var8);
+                        this.mMatrix.getValues(var8);
                         var3 = var8[0];
                         var4 = var8[2];
                         var2 = var8[5];
@@ -522,28 +534,28 @@ public class DrawContainer extends RelativeLayout {
                     int var6 = (int)((float)this.mUnderlayerBitmap.getWidth() * this.l * var3);
                     int var5 = (int)(var3 * (float)this.mUnderlayerBitmap.getHeight() * this.l);
                     if(var4 < (float)(-(var6 - this.getWidth()))) {
-                        this.c.postTranslate(-((float)var6 + var4 - (float)this.getWidth()), 0.0F);
+                        this.mMatrix.postTranslate(-((float) var6 + var4 - (float) this.getWidth()), 0.0F);
                     }
 
                     if(var4 > 0.0F) {
-                        this.c.postTranslate(-var4, 0.0F);
+                        this.mMatrix.postTranslate(-var4, 0.0F);
                     }
 
                     if(var2 < (float)(-(var5 - this.getHeight()))) {
-                        this.c.postTranslate(0.0F, -((float)var5 + var2 - (float)this.getHeight()));
+                        this.mMatrix.postTranslate(0.0F, -((float) var5 + var2 - (float) this.getHeight()));
                     }
 
                     if(var2 > 0.0F) {
-                        this.c.postTranslate(0.0F, -var2);
+                        this.mMatrix.postTranslate(0.0F, -var2);
                     }
 
                     if(var6 <= this.getWidth() || var5 <= this.getHeight()) {
-                        this.c.reset();
+                        this.mMatrix.reset();
                         this.d.reset();
                     }
 
                     if(!this.editable) {
-                        this.mViewA.a(var1);
+                        this.mViewA.handleOnTouchEvent(motionEvent);
                     }
 
                     this.m();
@@ -553,29 +565,29 @@ public class DrawContainer extends RelativeLayout {
             default:
                 break;
             case 5:
-                this.g = this.canDraw(var1);
+                this.g = this.canDraw(motionEvent);
                 if(this.g > 10.0F) {
-                    this.d.set(this.c);
-                    this.canDraw(this.f, var1);
+                    this.d.set(this.mMatrix);
+                    this.canDraw(this.f, motionEvent);
                     this.m = 1;
                 }
                 break;
             case 6:
                 this.m = 0;
-                this.d.set(this.c);
+                this.d.set(this.mMatrix);
                 this.m();
             }
 
             if(this.m != 0) {
-                var7 = true;
+                isConsume = true;
             } else {
-                var7 = false;
+                isConsume = false;
             }
         } else {
-            var7 = super.onTouchEvent(var1);
+            isConsume = super.onTouchEvent(motionEvent);
         }
 
-        return var7;
+        return isConsume;
     }
 
     public void setEditable(boolean var1) {
@@ -613,7 +625,7 @@ public class DrawContainer extends RelativeLayout {
 
     public void setUnderlayerBitmap(Bitmap bitmap) {
         this.mUnderlayerBitmap = bitmap;
-        this.c.reset();
+        this.mMatrix.reset();
         this.d.reset();
         this.o();
         if(this.mViewB != null) {
@@ -634,8 +646,8 @@ public class DrawContainer extends RelativeLayout {
     public static class PathHistory {
         public Matrix mMatrix = new Matrix();
         public Stack<DrawPath> mDrawPathStack = new Stack();
-        public int c;
-        public int d;
+        public int leftMargin;
+        public int topMargin;
         public float mDegree = 1.0F;
 
         public PathHistory(float var1) {

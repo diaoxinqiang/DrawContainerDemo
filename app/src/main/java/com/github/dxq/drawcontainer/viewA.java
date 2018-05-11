@@ -28,8 +28,8 @@ import java.util.Stack;
  *
  */
 public class viewA extends View {
-    private float a;
-    private float b;
+    private float mMoveX;
+    private float mMoveY;
     private android.graphics.Path mPath;
     private Paint mPaint;
     private Matrix mMatrix;
@@ -37,9 +37,9 @@ public class viewA extends View {
     private int g = 1;
     private boolean editable = false;
     private Stack<DrawContainer.PathHistory> layerInfoStack;
-    private float j;
-    private float k;
-    private float l = 1.0F;
+    private float x;
+    private float y;
+    private float scale = 1.0F;
     private OnClickListener mOnClickListener;
 
     public viewA(Context context) {
@@ -70,7 +70,7 @@ public class viewA extends View {
         this.mMatrix = new Matrix();
     }
 
-    private void a(Canvas var1, DrawContainer.PathHistory var2, DrawContainer.PathHistory var3, float var4) {
+    private void drawPath(Canvas var1, DrawContainer.PathHistory var2, DrawContainer.PathHistory var3, float var4) {
         if(var2 != null) {
             float[] var7 = new float[9];
             var3.mMatrix.getValues(var7);
@@ -99,35 +99,43 @@ public class viewA extends View {
 
     }
 
-    private void b(MotionEvent var1) {
+    /**
+     * 移动时的处理
+     * @param motionEvent
+     */
+    private void onMove(MotionEvent motionEvent) {
         DrawContainer.PathHistory var2 = this.getLayerInfo();
-        this.a = var1.getX() - (float)var2.c;
-        this.b = var1.getY() - (float)var2.d;
+        this.mMoveX = motionEvent.getX() - (float)var2.leftMargin;
+        this.mMoveY = motionEvent.getY() - (float)var2.topMargin;
         if(var2.mDrawPathStack == null) {
             var2.mDrawPathStack = new Stack();
         }
 
         this.mPath = new android.graphics.Path();
         var2.mDrawPathStack.add(new DrawContainer.DrawPath(this.mPath));
-        this.mPath.moveTo(this.a, this.b);
+        this.mPath.moveTo(this.mMoveX, this.mMoveY);
     }
 
-    private void c(MotionEvent var1) {
-        DrawContainer.PathHistory var6 = this.getLayerInfo();
-        float var3 = var1.getX() - (float)var6.c;
-        float var2 = var1.getY() - (float)var6.d;
-        float var4 = Math.abs(var3 - this.a);
-        float var5 = Math.abs(var2 - this.b);
-        if(var4 >= 3.0F || var5 >= 3.0F) {
-            this.mPath.lineTo(var3, var2);
-            this.a = var3;
-            this.b = var2;
+    /**
+     * 线条移动绘制
+     * @param motionEvent
+     */
+    private void moveLine(MotionEvent motionEvent) {
+        DrawContainer.PathHistory pathHistory = this.getLayerInfo();
+        float moveX = motionEvent.getX() - (float)pathHistory.leftMargin;
+        float moveY = motionEvent.getY() - (float)pathHistory.topMargin;
+        float distanceX = Math.abs(moveX - this.mMoveX);
+        float distanceY = Math.abs(moveY - this.mMoveY);
+        if(distanceX >= 3.0F || distanceY >= 3.0F) {
+            this.mPath.lineTo(moveX, moveY);
+            this.mMoveX = moveX;
+            this.mMoveY = moveY;
         }
 
         this.invalidate();
     }
 
-    private void d(MotionEvent var1) {
+    private void onClick(MotionEvent var1) {
         if(this.g == 1 && this.mOnClickListener != null) {
             this.mOnClickListener.onClick(this);
         }
@@ -137,43 +145,43 @@ public class viewA extends View {
 
     private DrawContainer.PathHistory getLayerInfo() {
         if(this.layerInfoStack.isEmpty()) {
-            this.layerInfoStack.push(new DrawContainer.PathHistory(this.l));
+            this.layerInfoStack.push(new DrawContainer.PathHistory(this.scale));
         }
 
         return (DrawContainer.PathHistory)this.layerInfoStack.peek();
     }
 
-    public void draw(Canvas var1, Stack<DrawContainer.PathHistory> var2, float var3) {
-        if(var2 != null) {
-            for(int var4 = 0; var4 < var2.size(); ++var4) {
-                this.a(var1, (DrawContainer.PathHistory)var2.get(var4), (DrawContainer.PathHistory)var2.get(var2.size() - 1), var3);
+    public void drawPaths(Canvas canvas, Stack<DrawContainer.PathHistory> pathHistories, float var3) {
+        if(pathHistories != null) {
+            for(int index = 0; index < pathHistories.size(); ++index) {
+                this.drawPath(canvas, (DrawContainer.PathHistory)pathHistories.get(index), (DrawContainer.PathHistory)pathHistories.get(pathHistories.size() - 1), var3);
             }
         }
 
     }
 
-    public void a(MotionEvent var1) {
-        switch(var1.getActionMasked()) {
-        case 0:
-            this.j = var1.getX();
-            this.k = var1.getY();
+    public void handleOnTouchEvent(MotionEvent motionEvent) {
+        switch(motionEvent.getActionMasked()) {
+        case MotionEvent.ACTION_DOWN:
+            this.x = motionEvent.getX();
+            this.y = motionEvent.getY();
             this.g = 1;
             break;
-        case 1:
-        case 3:
-            this.d(var1);
+        case MotionEvent.ACTION_UP:
+        case MotionEvent.ACTION_CANCEL:
+            this.onClick(motionEvent);
             break;
-        case 2:
-            if(this.g == 1 && (var1.getX() - this.j) * (var1.getX() - this.j) + (var1.getY() - this.k) * (var1.getY() - this.k) > 25.0F) {
+        case MotionEvent.ACTION_MOVE:
+            if(this.g == 1 && (motionEvent.getX() - this.x) * (motionEvent.getX() - this.x) + (motionEvent.getY() - this.y) * (motionEvent.getY() - this.y) > 25.0F) {
                 if(this.editable) {
-                    this.b(var1);
+                    this.onMove(motionEvent);
                 }
 
                 this.g = 2;
             }
 
             if(this.g == 2 && this.editable) {
-                this.c(var1);
+                this.moveLine(motionEvent);
             }
         }
 
@@ -186,49 +194,49 @@ public class viewA extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        this.draw(canvas, this.layerInfoStack, this.l);
+        this.drawPaths(canvas, this.layerInfoStack, this.scale);
     }
 
     @Override
     @SuppressLint({"ClickableViewAccessibility"})
-    public boolean onTouchEvent(MotionEvent var1) {
-        boolean var3 = true;
-        boolean var2;
-        switch(var1.getAction()) {
-        case 0:
-            this.j = var1.getX();
-            this.k = var1.getY();
+    public boolean onTouchEvent(MotionEvent motionEvent) {
+        boolean defaultValue = true;
+        boolean isConsume;
+        switch(motionEvent.getAction()) {
+        case MotionEvent.ACTION_DOWN:
+            this.x = motionEvent.getX();
+            this.y = motionEvent.getY();
             this.g = 1;
-            var2 = var3;
+            isConsume = defaultValue;
             break;
-        case 1:
+        case MotionEvent.ACTION_UP:
             if(this.g == 1 && this.mOnClickListener != null) {
                 this.mOnClickListener.onClick(this);
             }
 
             this.g = 1;
-            var2 = false;
+            isConsume = false;
             break;
-        case 2:
-            var2 = var3;
-            if((var1.getX() - this.j) * (var1.getX() - this.j) + (var1.getY() - this.k) * (var1.getY() - this.k) > 25.0F) {
+        case MotionEvent.ACTION_MOVE:
+            isConsume = defaultValue;
+            if((motionEvent.getX() - this.x) * (motionEvent.getX() - this.x) + (motionEvent.getY() - this.y) * (motionEvent.getY() - this.y) > 25.0F) {
                 this.g = 2;
-                var2 = var3;
+                isConsume = defaultValue;
             }
             break;
         default:
-            var2 = super.onTouchEvent(var1);
+            isConsume = super.onTouchEvent(motionEvent);
         }
 
-        return var2;
+        return isConsume;
     }
 
     public void setEditable(boolean editable) {
         this.editable = editable;
     }
 
-    public void setInitScale(float var1) {
-        this.l = var1;
+    public void setInitScale(float scale) {
+        this.scale = scale;
     }
 
     public void setLayerInfos(Stack<DrawContainer.PathHistory> layerInfoStack) {
@@ -237,8 +245,8 @@ public class viewA extends View {
     }
 
     @Override
-    public void setOnClickListener(OnClickListener var1) {
+    public void setOnClickListener(OnClickListener onClickListener) {
         this.setClickable(true);
-        this.mOnClickListener = var1;
+        this.mOnClickListener = onClickListener;
     }
 }
